@@ -210,7 +210,109 @@ bot.command("listarTarefas", async (ctx) => {
   }
 });
 
-// --- Lógica de Resposta e Comunicação com Agente de Instruções (geral) ---
+/**
+ * Ouve o comando /criarRotina.
+ * Solicita 5 tarefas de hortoterapia ao Agente de Instruções e as adiciona ao Google Tasks.
+ */
+bot.command("criarRotina", async (ctx) => {
+  await ctx.reply(
+    "Gerando sua rotina diária de hortoterapia... Isso pode levar um momento."
+  );
+
+  // 1. Obter o ID da lista "Hortoterapia" (encontra ou cria)
+  const hortoterapiaTasklistId = await getHortoterapiaTasklistId(ctx);
+  if (!hortoterapiaTasklistId) {
+    return; // A função auxiliar já tratou o erro e notificou o usuário
+  }
+
+  try {
+    // 2. Solicitar 5 tarefas de hortoterapia ao Agente de Instruções (LLM)
+    const promptParaIA =
+      "Gere uma lista de 5 tarefas diárias concisas e práticas para hortoterapia. Formate como uma lista numerada, por exemplo:\n1. Regar as plantas.\n2. Verificar pragas.\n...";
+
+    const iaResponse = await axios.post(INSTRUCTIONS_AGENT_URL, {
+      text: promptParaIA,
+    });
+    const rotinaTexto = iaResponse.data;
+    console.log("Rotina de IA recebida:\n", rotinaTexto);
+
+    // 3. Parsear a resposta para extrair as tarefas
+    // Assume que a IA retorna uma lista numerada ou com bullet points
+    const tasksRaw = rotinaTexto
+      .split("\n")
+      .filter((line) => line.trim().length > 0);
+    const tasksToAddTask = [];
+
+    tasksRaw.forEach((line) => {
+      // Remove números e pontos (ex: "1. ", "2. ") ou bullet points ("- ", "* ")
+      const cleanedTask = line.replace(/^\s*\d+\.\s*|^[\*\-]\s*/, "").trim();
+      if (cleanedTask.length > 0) {
+        tasksToAddTask.push(cleanedTask);
+      }
+    });
+
+    // Limita a um máximo de 5 tarefas, caso a IA gere mais
+    const finalTasks = tasksToAddTask.slice(0, 5);
+
+    if (finalTasks.length === 0) {
+      await ctx.reply(
+        "Não consegui gerar tarefas válidas a partir da rotina da IA. Tente novamente."
+      );
+      return;
+    }
+
+    await ctx.reply(
+      `Gerando ${finalTasks.length} tarefas para sua rotina. Adicionando ao Google Tasks...`
+    );
+    let addedTasksCount = 0;
+    let failedTasks = [];
+
+    // 4. Adicionar cada tarefa ao Google Tasks
+    for (const taskName of finalTasks) {
+      try {
+        await axios.post(`${GOOGLE_TASKS_AGENT_URL}/add_task`, {
+          taskName: taskName,
+          tasklistId: hortoterapiaTasklistId,
+        });
+        addedTasksCount++;
+        console.log(`Tarefa "${taskName}" adicionada com sucesso.`);
+      } catch (addTaskError) {
+        console.error(
+          `Falha ao adicionar tarefa "${taskName}":`,
+          addTaskError.message
+        );
+        failedTasks.push(taskName);
+      }
+    }
+
+    if (addedTasksCount > 0) {
+      let successMessage = `Sua rotina diária de hortoterapia foi criada com sucesso! ${addedTasksCount} tarefa(s) adicionada(s) à lista '${HORTOTERAPIA_TASKLIST_NAME}'.`;
+      if (failedTasks.length > 0) {
+        successMessage += `\n\n*Atenção:* Não foi possível adicionar as seguintes tarefas: ${failedTasks.join(
+          ", "
+        )}.`;
+      }
+      await ctx.reply(successMessage, { parse_mode: "Markdown" });
+    } else {
+      await ctx.reply(
+        "Não foi possível adicionar nenhuma tarefa à sua rotina. Verifique os logs para mais detalhes."
+      );
+    }
+  } catch (error) {
+    console.error("Erro ao criar rotina:", error.message);
+    // Tratamento de erro para autenticação do Google Tasks já é feito por getHortoterapiaTasklistId
+    // Tratamento de erro para o Agente de Instruções
+    if (error.response && error.response.data) {
+      await ctx.reply(
+        `Erro ao gerar rotina: ${error.response.data}. Verifique se o Agente de Instruções está rodando.`
+      );
+    } else {
+      await ctx.reply(
+        "Desculpe, não consegui criar sua rotina no momento. Verifique se o Agente de Instruções e o Agente Google Tasks estão rodando e acessíveis."
+      );
+    }
+  }
+});
 
 /**
  * Ouve por qualquer mensagem de texto enviada ao bot que não seja um comando.
