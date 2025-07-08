@@ -1,0 +1,5 @@
+# Arquivos e diretórios que o Docker deve ignorar durante o build
+.git
+.gitignore
+README.md
+docker-compose.yml

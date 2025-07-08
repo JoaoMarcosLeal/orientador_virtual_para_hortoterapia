@@ -1,0 +1,24 @@
+version: '3'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-gemma3
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - horto-network
+    # Ollama serve é o comando padrão da imagem
+    # Não é necessário especificar o comando
+
+volumes:
+  ollama-data:
+
+networks:
+  horto-network:
+    driver: bridge
