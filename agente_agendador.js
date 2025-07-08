@@ -170,7 +170,7 @@ app.post("/add_task", async (req, res) => {
 
   // Define o ID da lista de tarefas a ser usada.
   // Se tasklistId for fornecido, usa-o. Caso contrário, usa o ID da sua lista "As minhas tarefas".
-  const targetTasklistId = tasklistId; 
+  const targetTasklistId = tasklistId;
 
   try {
     // Cria uma instância do serviço Google Tasks API
@@ -315,6 +315,79 @@ app.get("/list_tasks/:tasklistId", async (req, res) => {
         );
     } else {
       res.status(500).send(`Erro interno ao listar tarefas: ${error.message}`);
+    }
+  }
+});
+
+/**
+ * Endpoint POST para encontrar uma lista de tarefas pelo nome ou criá-la se não existir.
+ * Requer autenticação prévia.
+ * Recebe um corpo JSON com { "tasklistName": "Nome da Lista" }.
+ * Retorna o ID da lista de tarefas.
+ */
+app.post("/find_or_create_tasklist", async (req, res) => {
+  const { tasklistName } = req.body;
+
+  if (!tasklistName) {
+    return res
+      .status(400)
+      .send("Erro: 'tasklistName' é um parâmetro obrigatório.");
+  }
+
+  try {
+    const tasks = google.tasks({ version: "v1", auth: oAuth2Client });
+
+    // 1. Tentar encontrar a lista existente
+    const listResult = await tasks.tasklists.list();
+    const existingList = listResult.data.items
+      ? listResult.data.items.find((list) => list.title === tasklistName)
+      : null;
+
+    if (existingList) {
+      console.log(
+        `Lista '${tasklistName}' encontrada com ID: ${existingList.id}`
+      );
+      return res
+        .status(200)
+        .json({
+          id: existingList.id,
+          title: existingList.title,
+          created: false,
+        });
+    }
+
+    // 2. Se não encontrou, criar a nova lista
+    const newListResult = await tasks.tasklists.insert({
+      requestBody: {
+        title: tasklistName,
+      },
+    });
+
+    console.log(
+      `Lista '${tasklistName}' criada com ID: ${newListResult.data.id}`
+    );
+    res
+      .status(201)
+      .json({
+        id: newListResult.data.id,
+        title: newListResult.data.title,
+        created: true,
+      });
+  } catch (error) {
+    console.error(
+      `Erro ao encontrar ou criar lista de tarefas '${tasklistName}':`,
+      error.message
+    );
+    if (error.code === 401 || error.code === 403) {
+      res
+        .status(401)
+        .send(
+          "Erro de autenticação/permissão ao encontrar ou criar lista. Por favor, reautorize o aplicativo."
+        );
+    } else {
+      res
+        .status(500)
+        .send(`Erro interno ao encontrar ou criar lista: ${error.message}`);
     }
   }
 });
