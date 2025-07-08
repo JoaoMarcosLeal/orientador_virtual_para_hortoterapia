@@ -17,8 +17,60 @@ const INSTRUCTIONS_AGENT_URL =
 const GOOGLE_TASKS_AGENT_URL =
   process.env.GOOGLE_TASKS_AGENT_URL || "http://localhost:3002"; // URL base do agente
 
+// Nome da lista de tarefas específica para hortoterapia
+const HORTOTERAPIA_TASKLIST_NAME = "Hortoterapia";
+
 // Cria uma nova instância do bot do Telegram usando o token do .env
 const bot = new Telegraf(process.env.BOT_TOKEN);
+
+// --- Funções Auxiliares ---
+
+/**
+ * Função para encontrar ou criar a lista de tarefas "Hortoterapia"
+ * e retornar seu ID.
+ * @param {object} ctx - O objeto de contexto do Telegraf para responder ao usuário.
+ * @returns {Promise<string|null>} O ID da lista "Hortoterapia" ou null em caso de erro.
+ */
+async function getHortoterapiaTasklistId(ctx) {
+  try {
+    // Faz uma requisição POST para o Agente Google Tasks para encontrar ou criar a lista
+    const response = await axios.post(
+      `${GOOGLE_TASKS_AGENT_URL}/find_or_create_tasklist`,
+      {
+        tasklistName: HORTOTERAPIA_TASKLIST_NAME,
+      }
+    );
+    // Retorna o ID da lista obtido na resposta
+    return response.data.id;
+  } catch (error) {
+    console.error("Erro ao obter/criar lista 'Hortoterapia':", error.message);
+    // Tratamento de erro para autenticação (se o agente retornar 401)
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      error.response.data.includes("Autenticação com Google Tasks necessária")
+    ) {
+      const authLink = `${GOOGLE_TASKS_AGENT_URL}/authorize`;
+      await ctx.reply(
+        `Para gerenciar tarefas de hortoterapia, o Agente Google Tasks precisa ser autenticado.\n\n` +
+          `Por favor, clique no link abaixo para autorizar o aplicativo:\n` +
+          `[Autenticar Google Tasks](${authLink})\n\n` +
+          `Após a autenticação, tente novamente.`
+      );
+    } else if (error.response && error.response.data) {
+      // Outros erros retornados pelo agente
+      await ctx.reply(
+        `Erro: ${error.response.data}. Não foi possível acessar a lista de tarefas de hortoterapia.`
+      );
+    } else {
+      // Erros de conexão ou outros erros desconhecidos
+      await ctx.reply(
+        "Desculpe, não consegui preparar a lista de tarefas de hortoterapia no momento. Verifique se o Agente Google Tasks está rodando."
+      );
+    }
+    return null; // Retorna null para indicar que o ID não pôde ser obtido
+  }
+}
 
 // --- Comandos do Bot ---
 
@@ -32,7 +84,7 @@ bot.start(async (ctx) => {
 // Ouve o comando /help
 bot.help(async (ctx) => {
   await ctx.reply(
-    "Comandos e funções disponíveis:\n/start - Iniciar a conversa\n/help - Ver esta mensagem de ajuda\n/info - Informações sobre o bot\n/adicionarTarefa [nome da tarefa] - Adiciona uma tarefa ao Google Tasks\n\nVocê pode me perguntar sobre 'instruções de rega', 'instruções de luz', ou 'como cuidar de uma planta'!"
+    "Comandos e funções disponíveis:\n/start - Iniciar a conversa\n/help - Ver esta mensagem de ajuda\n/info - Informações sobre o bot\n/adicionarTarefa [nome da tarefa] - Adiciona uma tarefa à lista 'Hortoterapia' do Google Tasks\n/listarTarefas - Lista as tarefas da sua lista 'Hortoterapia' do Google Tasks\n\nVocê pode me perguntar sobre 'instruções de rega', 'instruções de luz', ou 'como cuidar de uma planta'!"
   );
 });
 
@@ -51,48 +103,42 @@ bot.command("info", async (ctx) => {
 
 /**
  * Ouve o comando /adicionarTarefa.
- * Extrai o nome da tarefa e a envia para o Agente Google Tasks.
+ * Extrai o nome da tarefa e a envia para o Agente Google Tasks, na lista "Hortoterapia".
  */
 bot.command("adicionarTarefa", async (ctx) => {
-  // Extrai o texto da mensagem após o comando /adicionarTarefa
   const taskName = ctx.message.text.substring("/adicionarTarefa".length).trim();
 
-  // Verifica se o nome da tarefa foi fornecido
   if (!taskName) {
     return await ctx.reply(
       "Por favor, forneça o nome da tarefa. Ex: /adicionarTarefa Comprar adubo"
     );
   }
 
-  await ctx.reply(`Adicionando "${taskName}" ao Google Tasks...`);
-  try {
-    // Faz uma requisição POST para o Agente Google Tasks
-    // O endpoint para adicionar tarefa é /add_task
-    const response = await axios.post(`${GOOGLE_TASKS_AGENT_URL}/add_task`, {
-      taskName: taskName, // Envia o nome da tarefa no corpo da requisição JSON
-    });
-    // Envia a resposta do Agente Google Tasks de volta para o usuário
-    await ctx.reply(response.data);
-  } catch (error) {
-    console.error("Erro ao chamar o Agente Google Tasks:", error.message);
+  // A PRIMEIRA COISA: Obter o ID da lista "Hortoterapia" (encontra ou cria)
+  const hortoterapiaTasklistId = await getHortoterapiaTasklistId(ctx);
+  if (!hortoterapiaTasklistId) {
+    return; // A função auxiliar já tratou o erro e notificou o usuário
+  }
 
-    // Tratamento para autenticação
-    if (
-      error.response &&
-      error.response.status === 401 &&
-      error.response.data.includes("Autenticação com Google Tasks necessária")
-    ) {
-      const authLink = `${GOOGLE_TASKS_AGENT_URL}/authorize`;
-      await ctx.reply(
-        `Não consegui adicionar a tarefa. Parece que o Agente Google Tasks não está autenticado com sua conta Google.\n\n` +
-          `Por favor, clique no link abaixo para autorizar o aplicativo:\n` +
-          `[Autenticar Google Tasks](${authLink})\n\n` +
-          `Após a autenticação, tente novamente.`
-      );
-    } else if (error.response && error.response.data) {
-      await ctx.reply(
-        `Erro ao adicionar tarefa: ${error.response.data}. Por favor, verifique se o Agente Google Tasks está rodando.`
-      );
+  await ctx.reply(
+    `Adicionando "${taskName}" à lista '${HORTOTERAPIA_TASKLIST_NAME}'...`
+  );
+  try {
+    // Faz uma requisição POST para o Agente Google Tasks, passando o ID da lista
+    const response = await axios.post(`${GOOGLE_TASKS_AGENT_URL}/add_task`, {
+      taskName: taskName,
+      tasklistId: hortoterapiaTasklistId, // Passa o ID da lista "Hortoterapia"
+    });
+    await ctx.reply(response.data); // Envia a resposta do agente de volta ao usuário
+  } catch (error) {
+    console.error(
+      "Erro ao chamar o Agente Google Tasks para adicionar tarefa:",
+      error.message
+    );
+    // O tratamento de autenticação já foi feito em getHortoterapiaTasklistId.
+    // Aqui, tratamos outros erros que o agente possa retornar.
+    if (error.response && error.response.data) {
+      await ctx.reply(`Erro ao adicionar tarefa: ${error.response.data}.`);
     } else {
       await ctx.reply(
         "Desculpe, não consegui adicionar a tarefa no momento. Verifique se o Agente Google Tasks está rodando e acessível."
@@ -103,35 +149,34 @@ bot.command("adicionarTarefa", async (ctx) => {
 
 /**
  * Ouve o comando /listarTarefas.
- * Extrai o ID da lista e solicita as tarefas ao Agente Google Tasks.
+ * Lista as tarefas da lista "Hortoterapia" do Google Tasks.
  */
 bot.command("listarTarefas", async (ctx) => {
-  // Extrai o ID da lista de tarefas da mensagem
-  const tasklistId = ctx.message.text.substring("/listarTarefas".length).trim();
+  await ctx.reply(
+    `Buscando tarefas da sua lista '${HORTOTERAPIA_TASKLIST_NAME}'...`
+  );
 
-  // Verifica se o ID da lista foi fornecido
-  if (!tasklistId) {
-    return await ctx.reply(
-      "Por favor, forneça o ID da lista de tarefas. Ex: /listarTarefas MDU5NzU1MDQyNzgwNjAyNjE2NjU6MDow"
-    );
+  // A PRIMEIRA COISA: Obter o ID da lista "Hortoterapia" (encontra ou cria)
+  const hortoterapiaTasklistId = await getHortoterapiaTasklistId(ctx);
+  if (!hortoterapiaTasklistId) {
+    return; // A função auxiliar já tratou o erro e notificou o usuário
   }
 
-  await ctx.reply(`Buscando tarefas da lista "${tasklistId}"...`);
   try {
-    // Faz uma requisição GET para o Agente Google Tasks
-    // O endpoint para listar tarefas é /list_tasks/:tasklistId
+    // Faz uma requisição GET para o Agente Google Tasks, passando o ID da lista
     const response = await axios.get(
-      `${GOOGLE_TASKS_AGENT_URL}/list_tasks/${tasklistId}`
+      `${GOOGLE_TASKS_AGENT_URL}/list_tasks/${hortoterapiaTasklistId}`
     );
     const tasks = response.data; // A resposta é um array de tarefas
 
+    // Verifica o tipo da resposta para formatar corretamente
     if (
       typeof tasks === "string" &&
       tasks.includes("Nenhuma tarefa encontrada")
     ) {
-      await ctx.reply(tasks); // Mensagem de que não há tarefas
+      await ctx.reply(tasks); // Mensagem de que não há tarefas (se o agente retornar uma string)
     } else if (Array.isArray(tasks) && tasks.length > 0) {
-      let replyMessage = `*Tarefas na lista '${tasklistId}':*\n\n`;
+      let replyMessage = `*Tarefas na sua lista '${HORTOTERAPIA_TASKLIST_NAME}':*\n\n`;
       tasks.forEach((task) => {
         replyMessage += `• ${task.title} (Status: ${task.status}`;
         if (task.due) {
@@ -143,8 +188,9 @@ bot.command("listarTarefas", async (ctx) => {
       });
       await ctx.reply(replyMessage, { parse_mode: "Markdown" });
     } else {
+      // Caso o array esteja vazio ou a resposta não seja a esperada
       await ctx.reply(
-        `Nenhuma tarefa encontrada na lista com ID '${tasklistId}'.`
+        `Nenhuma tarefa encontrada na lista '${HORTOTERAPIA_TASKLIST_NAME}'.`
       );
     }
   } catch (error) {
@@ -152,24 +198,10 @@ bot.command("listarTarefas", async (ctx) => {
       "Erro ao chamar o Agente Google Tasks para listar tarefas:",
       error.message
     );
-
-    // Tratamento de erro para autenticação
-    if (
-      error.response &&
-      error.response.status === 401 &&
-      error.response.data.includes("Autenticação com Google Tasks necessária")
-    ) {
-      const authLink = `${GOOGLE_TASKS_AGENT_URL}/authorize`;
-      await ctx.reply(
-        `Não consegui listar as tarefas. Parece que o Agente Google Tasks não está autenticado com sua conta Google.\n\n` +
-          `Por favor, clique no link abaixo para autorizar o aplicativo:\n` +
-          `[Autenticar Google Tasks](${authLink})\n\n` +
-          `Após a autenticação, tente novamente.`
-      );
-    } else if (error.response && error.response.data) {
-      await ctx.reply(
-        `Erro ao listar tarefas: ${error.response.data}. Por favor, verifique se o Agente Google Tasks está rodando.`
-      );
+    // O tratamento de autenticação já foi feito em getHortoterapiaTasklistId.
+    // Aqui, tratamos outros erros que o agente possa retornar.
+    if (error.response && error.response.data) {
+      await ctx.reply(`Erro ao listar tarefas: ${error.response.data}.`);
     } else {
       await ctx.reply(
         "Desculpe, não consegui listar as tarefas no momento. Verifique se o Agente Google Tasks está rodando e acessível."
@@ -177,6 +209,8 @@ bot.command("listarTarefas", async (ctx) => {
     }
   }
 });
+
+// --- Lógica de Resposta e Comunicação com Agente de Instruções (geral) ---
 
 /**
  * Ouve por qualquer mensagem de texto enviada ao bot que não seja um comando.
