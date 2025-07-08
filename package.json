@@ -1,0 +1,29 @@
+{
+  "name": "orientador_virtual_para_hortoterapia",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JoaoMarcosLeal/orientador_virtual_para_hortoterapia.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JoaoMarcosLeal/orientador_virtual_para_hortoterapia/issues"
+  },
+  "homepage": "https://github.com/JoaoMarcosLeal/orientador_virtual_para_hortoterapia#readme",
+  "dependencies": {
+    "amqplib": "^0.10.8",
+    "axios": "^1.10.0",
+    "dotenv": "^17.0.1",
+    "express": "^5.1.0",
+    "googleapis": "^150.0.1",
+    "telegraf": "^4.16.3"
+  }
+}
