@@ -1,66 +1,46 @@
 # Orientador Virtual para Hortoterapia
 
-Um sistema de chatbot para orientação em hortoterapia, composto por um bot do Telegram que se comunica com agentes de IA local (Ollama/Gemma2) para fornecer instruções sobre o cultivo de plantas.
+Um sistema de chatbot para orientação em hortoterapia, composto por um bot do Telegram integrado a agentes locais de IA (Ollama/Gemma3), que fornece instruções sobre cultivo de plantas e gerenciamento de tarefas terapêuticas. O sistema utiliza uma arquitetura modular com serviços locais para garantir privacidade e autonomia.
 
-Dor que pretendemos resolver:
+## Propósito e Relevância
 
-https://edition.cnn.com/2018/08/03/health/sw-horticultural-therapy/index.html?utm_source=chatgpt.com 
+O projeto visa resolver problemas identificados em grandes centros urbanos, onde pessoas com mobilidade reduzida ou necessidades especiais encontram dificuldades de acesso a locais apropriados para praticar hortoterapia. Conforme destacado pela reportagem da CNN ["Gardening becomes healing with horticultural therapy"](https://edition.cnn.com/2018/08/03/health/sw-horticultural-therapy/index.html?utm_source=chatgpt.com), é essencial oferecer informações e orientações acessíveis por meio de plataformas digitais como o Telegram.
 
-Essa reportagem da CNN (“Gardening becomes healing with horticultural therapy”) mostra que, mesmo em grandes centros urbanos, quem mais precisaria desse recurso — como pessoas com mobilidade reduzida ou necessidades especiais — sofre com a ausência de canais e locais acessíveis para praticar a hortoterapia, o que reforça a importância de disponibilizar informação e orientação em plataformas de fácil acesso, como o seu chatbot no Telegram.
-
-Relevância do tema proposto:
-
-Segue algumas notícias sobre as vantagens da hortoterapia no dia-a-dia da comunidade.
-
-https://g1.globo.com/pe/petrolina-regiao/noticia/2019/02/02/projeto-do-if-sertao-pe-utiliza-a-horticultura-como-terapia-ocupacional.ghtml 
- 
-“o projeto de Extensão “Hortoterapia: cuidando do corpo e da alma”, desenvolvido pelo Instituto Federal do Sertão Pernambucano (IF Sertão-PE), vem utilizando a horticultura como terapia ocupacional, beneficiando a saúde mental e física de pessoas em tratamento de dependência química.” 
-
-https://ufla.br/noticias/extensao/15183-projeto-de-extensao-utiliza-a-hortoterapia-como-ferramenta-de-inclusao-social-de-assistidos-da-associacao-de-pais-e-amigos-dos-excepcionais-apae-de-lavras 
-
-“De acordo com o professor Cleiton, o cultivo de hortaliças pode ser utilizado como terapia psicossocial, permitindo o contato com a natureza, ajudando a diminuir a ansiedade, melhorando a concentração e o desenvolvimento de atividades motoras, além de proporcionar relaxamento” 
-
-https://versania.com.br/seniorsclub/index.php/category/hortoterapia-para-idosos/ 
-
-“Este conceito tem ganhado cada vez mais espaço no universo geriatra, e tem sido cada vez mais utilizado, trazendo inúmeras vantagens à saúde da pessoa idosa. Uma pesquisa realizada com 300 participantes, pela Universidade Estadual do Texas, nos Estados Unidos, indicou que indivíduos nesta faixa etária, que praticam a jardinagem diariamente, têm mais satisfação de vida e saúde em geral.” 
+Projetos como o ["Hortoterapia: cuidando do corpo e da alma"](https://g1.globo.com/pe/petrolina-regiao/noticia/2019/02/02/projeto-do-if-sertao-pe-utiliza-a-horticultura-como-terapia-ocupacional.ghtml) do IF Sertão-PE demonstram como a horticultura é efetiva na terapia ocupacional, beneficiando a saúde mental e física. Da mesma forma, iniciativas da [APAE de Lavras](https://ufla.br/noticias/extensao/15183-projeto-de-extensao-utiliza-a-hortoterapia-como-ferramenta-de-inclusao-social-de-assistidos-da-associacao-de-pais-e-amigos-dos-excepcionais-apae-de-lavras) e estudos voltados para idosos comprovam benefícios como redução de ansiedade, melhoria da concentração e satisfação geral com a vida.
 
 ## Pré-requisitos
 
-- [Node.js](https://nodejs.org/) (versão 16 ou superior)
-- [Docker](https://www.docker.com/get-started)
-- [Docker Compose](https://docs.docker.com/compose/install/)
-- [Telegram Bot Token](https://core.telegram.org/bots#botfather) (para o bot do Telegram)
-- [Google Cloud Platform](https://console.cloud.google.com/) (opcional, apenas para funcionalidades do Google Tasks)
+* [Node.js](https://nodejs.org/) (v16+)
+* [Docker](https://www.docker.com/get-started) e [Docker Compose](https://docs.docker.com/compose/install/)
+* [Telegram Bot Token](https://core.telegram.org/bots#botfather)
+* [Google Cloud Platform](https://console.cloud.google.com/) (opcional, para Google Tasks)
 
-## Instalação
+## Instalação e Configuração
 
-1. Clone o repositório:
+1. **Clone o repositório:**
 
    ```bash
    git clone https://github.com/JoaoMarcosLeal/orientador_virtual_para_hortoterapia.git
    cd orientador_virtual_para_hortoterapia
    ```
 
-2. Instale as dependências:
+2. **Instale as dependências:**
 
    ```bash
    npm install
    ```
 
-3. Configure o ambiente:
-   - Copie o arquivo de exemplo de variáveis de ambiente:
+3. **Configuração das variáveis de ambiente:**
 
-     ```bash
-     cp .env.example .env
-     ```
+   ```bash
+   cp .env.example .env
+   ```
 
-   - Edite o arquivo `.env` e adicione suas credenciais (BOT_TOKEN do Telegram e outras configurações necessárias)
+   * Edite o arquivo `.env`, incluindo `BOT_TOKEN` e demais credenciais necessárias.
 
-## Configurando o Ollama (Modelo de IA Local)
+## Configurando o Ollama (IA Local com Gemma3)
 
-O projeto utiliza o Ollama para executar o modelo Gemma2 localmente, permitindo que o bot forneça orientações sem depender de serviços externos de IA.
-
-1. Navegue até a pasta do container Ollama:
+1. Navegue até o diretório do container:
 
    ```bash
    cd ollama-container
@@ -72,19 +52,15 @@ O projeto utiliza o Ollama para executar o modelo Gemma2 localmente, permitindo 
    docker-compose up -d
    ```
 
-3. Aguarde enquanto o container baixa o modelo Gemma3 e inicia o servidor.
-   - O download do modelo pode levar alguns minutos, dependendo da sua conexão com a internet.
-   - O modelo ocupa aproximadamente 4-5GB de espaço em disco.
-
-4. Verifique se o serviço está funcionando corretamente:
+3. Verifique se o serviço está disponível:
 
    ```bash
    curl http://localhost:11434/api/tags
    ```
 
-   Isso deve retornar a lista de modelos disponíveis, incluindo o `gemma3`.
+   Deve listar o modelo `gemma3`.
 
-5. Volte para a pasta principal do projeto:
+4. Retorne ao diretório principal:
 
    ```bash
    cd ..
@@ -92,45 +68,57 @@ O projeto utiliza o Ollama para executar o modelo Gemma2 localmente, permitindo 
 
 ## Executando o Projeto
 
-Após configurar as variáveis de ambiente e iniciar o container Ollama, você pode iniciar o projeto:
+Após configurar o ambiente e o container Ollama:
 
-```bash
-npm start
+* **Inicie o bot:**
+
+  ```bash
+  npm start
+  ```
+
+* **Execute o agente agendador (opcional):**
+
+  ```bash
+  node agente_agendador
+  ```
+
+## Estrutura Arquitetural
+
+### Arquitetura Central (Microserviços)
+
+* **Bot Telegram (`index.js`):** Interface com o usuário via Telegram.
+* **Agente de Instrução (`agente_instrucao.js`):** Gera respostas via IA local.
+* **Agente Agendador (`agente_agendador.js`):** Gerencia tarefas via Google Tasks com autenticação OAuth2.
+* **Ollama/Gemma3:** IA local para geração textual.
+* **Google Tasks API:** Serviço externo de agendamento.
+
+### Fluxo de Comunicação Seguro
+
+```
+Usuário Telegram
+   |
+   v
+[Bot Telegram] --HTTPS + JWT--> [Agente de Instrução] --HTTPS--> [Ollama (Gemma3)]
+   |
+   v
+[Agente Agendador] --HTTPS + OAuth2--> [Google Tasks API]
+   |
+   v
+[Banco Seguro para tokens]
 ```
 
-Isso iniciará o bot do Telegram e os serviços relacionados. O bot agora estará pronto para responder a mensagens no Telegram. Em outro terminal, inicialize o agente agendador:
+## Medidas de Segurança Implementadas
 
-```bash
-node agente_agendador
-```
+* Armazenamento seguro de tokens OAuth2 em banco dedicado.
+* Autenticação interna usando JWT/API Key.
+* Comunicação HTTPS em todos os serviços.
+* Validação e sanitização rigorosas de entradas.
+* Rate limiting e restrições CORS.
+* Logs protegidos contra exposição de dados sensíveis.
 
-## Variáveis de Ambiente Necessárias
+## Funcionalidades Principais
 
-Para que o projeto funcione corretamente, as seguintes variáveis de ambiente devem estar configuradas no arquivo `.env`:
-
-- `BOT_TOKEN`: Token do seu bot do Telegram (obrigatório)
-- `INSTRUCTIONS_AGENT_PORT`: Porta para o serviço de instruções (padrão: 3000)
-- `INSTRUCTIONS_AGENT_URL`: URL para o serviço de instruções (padrão: http://localhost:3000/ia)
-- `OLLAMA_API_URL`: URL da API Ollama (padrão: http://localhost:11434/api/generate)
-- `OLLAMA_MODEL`: Nome do modelo Ollama a ser usado (padrão: gemma2:latest)
-
-Para funcionalidades do Google Tasks:
-- `GOOGLE_TASKS_AGENT_PORT`: Porta para o serviço de agendamento (padrão 3002)
-- `ID_CLIENT`: ID do cliente do Google Cloud
-- `SECRET_KEY`: Chave secreta do Google Cloud
-- `GOOGLE_REDIRECT_URI`: URI de redirecionamento para autenticação OAuth
-
-## Estrutura do Projeto
-
-- `index.js`: Bot do Telegram e ponto de entrada principal
-- `agente_instrucao.js`: Serviço que se comunica com o modelo Ollama para gerar respostas
-- `agente_agendador.js`: Serviço que integra com o Google Tasks (opcional)
-- `ollama-container/`: Configuração do Docker para o Ollama
-
-## Testes
-
-Para testar a conexão com o Ollama:
-
-```bash
-node teste-ollama.js
-```
+* Orientações de cultivo de plantas por IA local.
+* Comunicação via Telegram com interface amigável.
+* Gerenciamento eficiente de tarefas terapêuticas (Google Tasks).
+* Arquitetura robusta, modular e segura.
