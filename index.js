@@ -15,6 +15,34 @@ const INSTRUCTIONS_AGENT_URL =
 // Cria uma nova instância do bot do Telegram usando o token do .env
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+// --- Comandos do Bot (devem vir ANTES do handler geral) ---
+
+// Ouve o comando /start
+bot.start(async (ctx) => {
+  await ctx.reply(
+    `Bem-vindo(a), ${ctx.from.first_name}! Eu sou seu orientador virtual de hortoterapia. Envie-me suas dúvidas ou use /help.`
+  );
+});
+
+// Ouve o comando /ajuda
+bot.help(async (ctx) => {
+  await ctx.reply(
+    "Comandos e funções disponíveis:\n/start - Iniciar a conversa\n/help - Ver esta mensagem de ajuda\n/info - Informações sobre o bot\n\nVocê pode me perguntar sobre 'instruções de rega', 'instruções de luz', ou 'como cuidar de uma planta'!"
+  );
+});
+
+bot.command('info', async (ctx) => {
+  await ctx.reply(
+    "*Orientador Virtual de Hortoterapia*\n\n" +
+    "Sou um assistente especializado em hortoterapia, powered by IA.\n\n" +
+    "Como me usar:\n" +
+    "• Faça perguntas sobre plantas e cuidados\n" +
+    "• Use /help para ver todos os comandos\n\n" +
+    "Desenvolvido para ajudar no seu bem-estar através das plantas!",
+    { parse_mode: 'Markdown' }
+  );
+});
+
 // --- Lógica de Resposta e Comunicação com Agente de Instruções ---
 
 /**
@@ -24,16 +52,19 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 bot.on(message("text"), async (ctx) => {
   const textoRecebido = ctx.message.text; // Armazena o texto da mensagem
   const chatId = ctx.chat.id; // ID do chat para o qual responder
+  const userId = ctx.from.id; // ID do usuário
 
   console.log(
     `Mensagem de texto recebida de ${ctx.from.first_name} (${chatId}): "${textoRecebido}"`
   );
 
-  // Verifica se a mensagem contém palavras-chave para acionar o Agente de Instruções
-  // Você pode refinar essas palavras-chave conforme a necessidade do seu projeto.
-  if (textoRecebido) {
-    // Adicionei "cuidar" como exemplo
+  // Verifica se a mensagem é um comando (começa com /)
+  if (textoRecebido.startsWith('/')) {
+    return; // Não processa comandos aqui, eles são tratados pelos handlers específicos
+  }
 
+  // Se chegou até aqui, é uma mensagem normal que deve ser enviada para a IA
+  if (textoRecebido && textoRecebido.trim().length > 0) {
     await ctx.reply(
       "Sua solicitação de instrução foi enviada para o orientador. Aguarde a resposta da IA..."
     );
@@ -53,25 +84,11 @@ bot.on(message("text"), async (ctx) => {
       );
     }
   } else {
-    // Resposta padrão se nenhuma condição for atendida
+    // Resposta padrão se a mensagem estiver vazia
     await ctx.reply(
-      "Recebi sua mensagem! Ainda estou aprendendo sobre isso, mas logo serei um ótimo orientador de hortoterapia. Tente perguntar sobre 'instruções de rega' ou 'como cuidar de uma planta'."
+      "Recebi sua mensagem! Envie-me uma pergunta sobre hortoterapia para que eu possa ajudá-lo. Use /ajuda para ver os comandos disponíveis."
     );
   }
-});
-
-// Ouve o comando /start
-bot.start(async (ctx) => {
-  await ctx.reply(
-    `Bem-vindo(a), ${ctx.from.first_name}! Eu sou seu orientador virtual de hortoterapia. Envie-me suas dúvidas ou use /ajuda.`
-  );
-});
-
-// Ouve o comando /ajuda
-bot.help(async (ctx) => {
-  await ctx.reply(
-    "Comandos e funções disponíveis:\n/start - Iniciar a conversa\n/help ou /ajuda - Ver esta mensagem de ajuda\n\nVocê pode me perguntar sobre 'instruções de rega', 'instruções de luz', ou 'como cuidar de uma planta'!"
-  );
 });
 
 // --- Inicialização do Bot ---

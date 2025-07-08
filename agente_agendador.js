@@ -10,8 +10,8 @@ const { OAuth2Client } = require("google-auth-library");
 require("dotenv").config();
 
 // Define a porta em que o servidor irá escutar.
-// Tenta usar a variável de ambiente GOOGLE_TASKS_AGENT_PORT, caso contrário, usa 3002.
-const PORT = 3002;
+// Tenta usar a variável de ambiente SCHEDULER_AGENT_PORT, caso contrário, usa 3002.
+const PORT = process.env.SCHEDULER_AGENT_PORT || 3002;
 
 // Cria uma instância do aplicativo Express
 const app = express();
